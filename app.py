@@ -4,6 +4,9 @@ from database import get_db
 app = Flask(__name__)
 app.config['DEBUG'] = True
 
+api_username = 'admin'
+api_password = 'password'
+
 @app.teardown_appcontext
 def close_db(error):
     if hasattr(g, 'sqlite_db'):
@@ -23,8 +26,13 @@ def get_member():
         member_dict['email'] = member['email']
         member_dict['level'] = member['level']
         return_values.append(member_dict)
+
+    username = request.authorization.username
+    password = request.authorization.password
     
-    return jsonify({'members': return_values})
+    if api_username == username and api_password == password:
+        return jsonify({'members': return_values, 'username': username, 'password': password})
+    return jsonify({'message': 'Authentication Failed'}), 403
 
 @app.route('/member/<int:member_id>', methods=['GET'])
 def get_member_by_id(member_id):
