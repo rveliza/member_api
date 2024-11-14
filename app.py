@@ -1,5 +1,6 @@
 from flask import Flask, g, request, jsonify
 from database import get_db
+from functools import wraps
 
 app = Flask(__name__)
 app.config['DEBUG'] = True
@@ -7,12 +8,22 @@ app.config['DEBUG'] = True
 api_username = 'admin'
 api_password = 'password'
 
+def protected(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        auth = request.authorization
+        if auth and auth.username == api_username and auth.password == api_password:
+            return f(*args, **kwargs)
+        return jsonify({'message': 'Authentication failed'}), 403
+    return decorated
+
 @app.teardown_appcontext
 def close_db(error):
     if hasattr(g, 'sqlite_db'):
         g.sqlite_db.close()
 
 @app.route('/member', methods=['GET'])
+@protected
 def get_member():
     db = get_db()
     members_cur = db.execute("SELECT * FROM members")
@@ -27,14 +38,11 @@ def get_member():
         member_dict['level'] = member['level']
         return_values.append(member_dict)
 
-    username = request.authorization.username
-    password = request.authorization.password
-    
-    if api_username == username and api_password == password:
-        return jsonify({'members': return_values, 'username': username, 'password': password})
-    return jsonify({'message': 'Authentication Failed'}), 403
+    return jsonify({'members': return_values})
+
 
 @app.route('/member/<int:member_id>', methods=['GET'])
+@protected
 def get_member_by_id(member_id):
 
     db = get_db()
@@ -49,6 +57,7 @@ def get_member_by_id(member_id):
     return jsonify({'member': {'id': member_id, 'name': member_name, 'email': member_email, 'level': member_level}})
 
 @app.route('/member', methods=["POST"])
+@protected
 def add_member():
     new_member_data = request.get_json()
     # print(new_member_data)
@@ -73,6 +82,7 @@ def add_member():
     return jsonify({'member': {'id': db_id, 'name': db_name, 'email': db_email, 'level': db_level}})
 
 @app.route('/member/<int:member_id>', methods=['PUT', 'PATCH'])
+@protected
 def edit_member(member_id):
     new_member_data = request.get_json()
     name = new_member_data['name']
@@ -95,6 +105,7 @@ def edit_member(member_id):
     }})
 
 @app.route('/member/<int:member_id>', methods=['DELETE'])
+@protected
 def delete_member(member_id):
     db = get_db()
     db.execute('DELETE from members WHERE id = ?', [member_id])
