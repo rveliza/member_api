@@ -1,0 +1,3 @@
+### After creating schema.sql...
+
+sqlite3 members.db < schema.sql
