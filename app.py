@@ -66,7 +66,25 @@ def add_member():
 
 @app.route('/member/<int:member_id>', methods=['PUT', 'PATCH'])
 def edit_member(member_id):
-    return "This updates a member by id"
+    new_member_data = request.get_json()
+    name = new_member_data['name']
+    email = new_member_data['email']
+    level = new_member_data['level']
+
+    db = get_db()
+    db.execute('UPDATE members SET name = ?, email = ?, level = ? WHERE id = ?', [name, email, level, member_id])
+    db.commit()
+
+    # Get data from db
+    member_cur = db.execute('SELECT * FROM members WHERE id = ?', [member_id])
+    db_member = member_cur.fetchone()
+
+    return jsonify({'member': {
+        'id': db_member['id'],
+        'name': db_member['name'],
+        'email': db_member['email'],
+        'level': db_member['level']
+    }})
 
 @app.route('/member/<int:member_id>', methods=['DELETE'])
 def delete_member(member_id):
